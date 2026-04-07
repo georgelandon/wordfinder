@@ -1,8 +1,8 @@
 import {
   DEFAULT_ROUND_DURATION_SECONDS,
   PRE_ROUND_COUNTDOWN_SECONDS
-} from "../../../shared/game/constants.ts";
-import { generateSeededBoard } from "../../../shared/game/board.ts";
+} from "../_shared/game/constants.ts";
+import { generateSeededBoard } from "../_shared/game/board.ts";
 import { createAdminClient } from "../_shared/clients.ts";
 import { getUserFromRequest, handleOptions, json } from "../_shared/http.ts";
 

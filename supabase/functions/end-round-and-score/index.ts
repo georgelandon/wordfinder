@@ -1,7 +1,7 @@
-import { DICTIONARY_SET } from "../../../shared/dictionary.ts";
-import { scoreRound } from "../../../shared/game/scoring.ts";
-import { applyRoundTotalsToSessionTotals } from "../../../shared/game/session.ts";
-import type { PlayerRoundSummary } from "../../../shared/types.ts";
+import { DICTIONARY_SET } from "../_shared/dictionary.ts";
+import { scoreRound } from "../_shared/game/scoring.ts";
+import { applyRoundTotalsToSessionTotals } from "../_shared/game/session.ts";
+import type { PlayerRoundSummary } from "../_shared/types.ts";
 import { createAdminClient } from "../_shared/clients.ts";
 import { getUserFromRequest, handleOptions, json } from "../_shared/http.ts";
 
