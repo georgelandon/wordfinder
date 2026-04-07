@@ -56,7 +56,6 @@ Boggle Party is a static-hosted multiplayer word game built for living-room play
 - `/room` create or join a room
 - `/display/:roomCode` TV/shared display
 - `/controller/:roomCode` phone controller for players and host
-- `/daily` deterministic single-player daily mode
 - `/results/:roomCode/:roundId` latest room summary view
 
 The app uses `HashRouter`, so GitHub Pages links resolve as `#/controller/ABCDE`, `#/display/ABCDE`, and so on.
@@ -254,10 +253,6 @@ Push to `main` and the workflow will publish `dist/`.
 6. When time expires, clients safely race to trigger `end-round-and-score`; the flow is idempotent.
 7. Results publish to all clients via Supabase Realtime and the room remains active for the next round.
 
-## Daily Mode
-
-`/daily` is a deterministic date-seeded solo board that works without room setup. It stores recent runs locally on the device.
-
 ## Tests
 
 Run:
@@ -280,8 +275,8 @@ Covered logic:
 
 ## Dictionary
 
-- Daily mode lazy-loads a generated `ENABLE1` word list, so the main multiplayer shell does not pay the full dictionary bundle cost up front.
 - Server-side round scoring uses the same filtered list from `supabase/functions/_shared/dictionary.ts`.
+- The generated `ENABLE1` source is also available in `shared/generated/dictionary-data.ts` for shared tooling and tests.
 - The generated dictionary removes exact single-token matches from the `LDNOOBW` English profanity list. This is an inference for "remove vulgar words" and can be tuned later with a manual allowlist if you want a looser or stricter filter.
 - Refresh the generated files with:
 

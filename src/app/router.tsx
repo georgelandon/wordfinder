@@ -1,7 +1,6 @@
 import { HashRouter, Route, Routes } from "react-router-dom";
 import { ShellLayout } from "@/components/layout/ShellLayout";
 import { ControllerPage } from "@/pages/ControllerPage";
-import { DailyPage } from "@/pages/DailyPage";
 import { DisplayPage } from "@/pages/DisplayPage";
 import { LandingPage } from "@/pages/LandingPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
@@ -17,7 +16,6 @@ export function AppRouter() {
           <Route index element={<LandingPage />} />
           <Route path="room" element={<RoomPage />} />
           <Route path="controller/:roomCode" element={<ControllerPage />} />
-          <Route path="daily" element={<DailyPage />} />
           <Route path="results/:roomCode/:roundId" element={<ResultsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

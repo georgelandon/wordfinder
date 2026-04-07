@@ -1,6 +1,5 @@
 import { Outlet, NavLink } from "react-router-dom";
 import { routes } from "@/lib/routes";
-import { cn } from "@/lib/utils";
 
 export function ShellLayout() {
   return (
@@ -22,25 +21,12 @@ export function ShellLayout() {
               </span>
             </span>
           </NavLink>
-          <nav className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] p-1.5">
-            {[
-              { to: routes.room, label: "Rooms" },
-              { to: routes.daily, label: "Daily" }
-            ].map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-full px-4 py-2 text-sm font-medium text-mist/75 transition",
-                    isActive && "bg-white/10 text-surf"
-                  )
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
+          <NavLink
+            to={routes.room}
+            className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm font-medium text-surf transition hover:bg-white/[0.08]"
+          >
+            Create Or Join Room
+          </NavLink>
         </header>
         <main className="flex-1 pb-10">
           <Outlet />

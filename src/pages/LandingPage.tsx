@@ -25,12 +25,6 @@ export function LandingPage() {
             >
               Start Or Join A Room
             </Link>
-            <Link
-              to={routes.daily}
-              className="rounded-2xl border border-white/10 bg-white/[0.05] px-5 py-3 font-semibold text-surf"
-            >
-              Play The Daily
-            </Link>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             {[
@@ -84,4 +78,3 @@ export function LandingPage() {
     </div>
   );
 }
-

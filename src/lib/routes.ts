@@ -4,7 +4,5 @@ export const routes = {
   display: (roomCode: string) => `/display/${roomCode.toUpperCase()}`,
   controller: (roomCode: string) => `/controller/${roomCode.toUpperCase()}`,
   results: (roomCode: string, roundId: string) =>
-    `/results/${roomCode.toUpperCase()}/${roundId}`,
-  daily: "/daily"
+    `/results/${roomCode.toUpperCase()}/${roundId}`
 };
-

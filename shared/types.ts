@@ -171,10 +171,3 @@ export interface RoundScoringResult {
   scoredWords: ScoreWordResult[];
   roundTotals: PlayerRoundSummary[];
 }
-
-export interface DailyHistoryEntry {
-  date: string;
-  score: number;
-  submittedWords: string[];
-  durationSeconds: number;
-}
