@@ -25,13 +25,13 @@ additional_redirect_urls = [
 enable_anonymous_sign_ins = true
 
 [functions.create-or-join-room]
-verify_jwt = true
+verify_jwt = false
 
 [functions.start-round]
-verify_jwt = true
+verify_jwt = false
 
 [functions.end-round-and-score]
-verify_jwt = true
+verify_jwt = false
 
 [functions.set-player-state]
-verify_jwt = true
+verify_jwt = false
