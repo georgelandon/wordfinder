@@ -34,9 +34,35 @@ export async function ensureAnonymousUser(): Promise<User> {
   return data.user;
 }
 
+async function getAccessToken() {
+  const {
+    data: { session }
+  } = await supabase.auth.getSession();
+
+  if (session?.access_token) {
+    return session.access_token;
+  }
+
+  await ensureAnonymousUser();
+
+  const {
+    data: { session: refreshedSession }
+  } = await supabase.auth.getSession();
+
+  if (!refreshedSession?.access_token) {
+    throw new Error("Missing Supabase access token for Edge Function call.");
+  }
+
+  return refreshedSession.access_token;
+}
+
 async function invokeFunction<T>(name: string, body: Record<string, unknown>) {
+  const accessToken = await getAccessToken();
   const { data, error } = await supabase.functions.invoke(name, {
-    body
+    body,
+    headers: {
+      Authorization: `Bearer ${accessToken}`
+    }
   });
 
   if (error) {
