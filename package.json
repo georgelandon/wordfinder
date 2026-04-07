@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dictionary:sync": "node scripts/sync-enable-dictionary.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest",
@@ -36,4 +37,3 @@
     "vitest": "^3.2.4"
   }
 }
-

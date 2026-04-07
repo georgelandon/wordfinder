@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { DICTIONARY_SET } from "@shared/dictionary";
+import { loadDictionarySet } from "@shared/dictionary";
 import { generateSeededBoard } from "@shared/game/board";
 import { scoreRound } from "@shared/game/scoring";
+import type { RoundScoringResult } from "@shared/types";
 import { MobileBoard } from "@/components/controller/MobileBoard";
 import { Panel } from "@/components/Panel";
 import { useSessionStore } from "@/store/sessionStore";
 
 const DAILY_DURATION_SECONDS = 180;
+const EMPTY_SCORING_RESULT: RoundScoringResult = {
+  scoredWords: [],
+  roundTotals: []
+};
 
 function todaySeed() {
   return new Date().toISOString().slice(0, 10);
@@ -15,11 +20,36 @@ function todaySeed() {
 export function DailyGame() {
   const seed = todaySeed();
   const board = useMemo(() => generateSeededBoard(`daily:${seed}`), [seed]);
+  const [dictionary, setDictionary] = useState<ReadonlySet<string> | null>(null);
+  const [dictionaryError, setDictionaryError] = useState<string | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState(DAILY_DURATION_SECONDS);
   const [submittedWords, setSubmittedWords] = useState<string[]>([]);
   const [completed, setCompleted] = useState(false);
   const history = useSessionStore((state) => state.dailyHistory);
   const addDailyHistory = useSessionStore((state) => state.addDailyHistory);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void loadDictionarySet()
+      .then((nextDictionary) => {
+        if (!cancelled) {
+          setDictionary(nextDictionary);
+          setDictionaryError(null);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setDictionaryError(
+            error instanceof Error ? error.message : "Could not load the daily dictionary."
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (completed) {
@@ -42,12 +72,14 @@ export function DailyGame() {
 
   const result = useMemo(
     () =>
-      scoreRound({
-        board,
-        submissions: submittedWords.map((word) => ({ playerId: "solo", word })),
-        dictionary: DICTIONARY_SET
-      }),
-    [board, submittedWords]
+      dictionary
+        ? scoreRound({
+            board,
+            submissions: submittedWords.map((word) => ({ playerId: "solo", word })),
+            dictionary
+          })
+        : EMPTY_SCORING_RESULT,
+    [board, dictionary, submittedWords]
   );
 
   const roundTotal = result.roundTotals[0];
@@ -106,6 +138,14 @@ export function DailyGame() {
           subtitle="Daily mode uses the same scoring rules as party rooms."
         >
           <div className="space-y-3">
+            {dictionaryError ? (
+              <p className="rounded-2xl border border-coral/20 bg-coral/10 px-4 py-3 text-sm text-coral">
+                {dictionaryError}
+              </p>
+            ) : null}
+            {!dictionary && !dictionaryError ? (
+              <p className="text-sm text-mist/65">Loading the filtered ENABLE dictionary...</p>
+            ) : null}
             {result.scoredWords.length > 0 ? (
               result.scoredWords.map((word) => (
                 <div
@@ -122,7 +162,11 @@ export function DailyGame() {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-mist/65">Submit words to build your score sheet.</p>
+              <p className="text-sm text-mist/65">
+                {dictionary
+                  ? "Submit words to build your score sheet."
+                  : "Dictionary loading keeps the daily board lightweight on first open."}
+              </p>
             )}
           </div>
         </Panel>
@@ -150,4 +194,3 @@ export function DailyGame() {
     </div>
   );
 }
-

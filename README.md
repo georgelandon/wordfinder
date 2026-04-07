@@ -12,8 +12,10 @@ Boggle Party is a static-hosted multiplayer word game built for living-room play
 ```text
 .
 +-- .github/workflows/deploy.yml
++-- scripts/sync-enable-dictionary.mjs
 +-- shared/
 |   +-- dictionary.ts
+|   `-- generated/dictionary-data.ts
 |   +-- types.ts
 |   `-- game/
 |       +-- board.ts
@@ -37,6 +39,8 @@ Boggle Party is a static-hosted multiplayer word game built for living-room play
 |   +-- migrations/202604062210_initial.sql
 |   `-- functions/
 |       +-- _shared/
+|       |   +-- dictionary.ts
+|       |   `-- generated/dictionary-data.ts
 |       +-- create-or-join-room/
 |       +-- start-round/
 |       +-- end-round-and-score/
@@ -106,9 +110,11 @@ Tradeoff:
 ## Edge Functions
 
 - `create-or-join-room`
-  - Creates a room when needed
   - Joins or restores the player row
   - Assigns the first player as host
+- `create-room`
+  - Creates an empty room for the TV/display route
+  - Leaves host assignment empty until the first phone joins
 - `set-player-state`
   - Heartbeat/ready updates
   - Marks stale players disconnected
@@ -172,6 +178,7 @@ supabase db push
 ### 7. Deploy Edge Functions
 
 ```bash
+supabase functions deploy create-room
 supabase functions deploy create-or-join-room
 supabase functions deploy set-player-state
 supabase functions deploy start-round
@@ -239,9 +246,9 @@ Push to `main` and the workflow will publish `dist/`.
 
 ## How The Session Works
 
-1. First joiner becomes host automatically.
+1. `Create Room` opens the display route without creating a player.
 2. The display route shows room code, QR onboarding, player list, and ready state.
-3. Host starts the round from `/controller/:roomCode`.
+3. The first phone/player to join becomes host automatically.
 4. Round timing uses server timestamps (`starts_at`, `ends_at`) so all devices stay aligned.
 5. Phones submit unique words with debounced writes.
 6. When time expires, clients safely race to trigger `end-round-and-score`; the flow is idempotent.
@@ -262,6 +269,7 @@ npm run test:run
 Covered logic:
 
 - deterministic seeded board generation
+- filtered dictionary loading and blocklist behavior
 - board path validation
 - `Qu` tile behavior
 - scoring rules
@@ -270,8 +278,17 @@ Covered logic:
 - cumulative session scoring
 - round sequencing guardrails
 
+## Dictionary
+
+- Daily mode lazy-loads a generated `ENABLE1` word list, so the main multiplayer shell does not pay the full dictionary bundle cost up front.
+- Server-side round scoring uses the same filtered list from `supabase/functions/_shared/dictionary.ts`.
+- The generated dictionary removes exact single-token matches from the `LDNOOBW` English profanity list. This is an inference for "remove vulgar words" and can be tuned later with a manual allowlist if you want a looser or stricter filter.
+- Refresh the generated files with:
+
+```bash
+npm run dictionary:sync
+```
+
 ## Notes
 
-- The bundled dictionary is intentionally a compact starter lexicon stored in [`shared/dictionary.ts`](./shared/dictionary.ts) so the repo stays manageable.
-- For a larger production word list, replace that file with a fuller dictionary source and redeploy the scoring function.
 - The TV experience is browser-based by design, so Apple TV support means casting/AirPlay/mirroring a large-screen browser session rather than a native tvOS app.

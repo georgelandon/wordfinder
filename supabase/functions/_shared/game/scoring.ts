@@ -34,7 +34,7 @@ export interface SubmissionInput {
 export interface ScoreRoundOptions {
   board: BoardMatrix;
   submissions: SubmissionInput[];
-  dictionary: Set<string>;
+  dictionary: ReadonlySet<string>;
 }
 
 function baseReason(status: ScoreWordResult["status"]) {
@@ -201,4 +201,3 @@ export function scoreRound({
     roundTotals
   };
 }
-
