@@ -122,6 +122,10 @@ export interface JoinRoomResponse {
   hostPlayerId: string | null;
 }
 
+export interface CreateRoomResponse {
+  room: RoomRecord;
+}
+
 export interface RoomPresenceEntry {
   key: string;
   userId: string;
@@ -174,4 +178,3 @@ export interface DailyHistoryEntry {
   submittedWords: string[];
   durationSeconds: number;
 }
-

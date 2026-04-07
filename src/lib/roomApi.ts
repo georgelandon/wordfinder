@@ -2,6 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import { normalizeWord } from "@shared/game/validation";
 import type {
   BoardMatrix,
+  CreateRoomResponse,
   JoinRoomResponse,
   PlayerRecord,
   RoomPresenceEntry,
@@ -79,6 +80,11 @@ export async function createOrJoinRoom(input: {
 }) {
   await ensureAnonymousUser();
   return invokeFunction<JoinRoomResponse>("create-or-join-room", input);
+}
+
+export async function createRoom(input?: { roomCode?: string }) {
+  await ensureAnonymousUser();
+  return invokeFunction<CreateRoomResponse>("create-room", input ?? {});
 }
 
 export async function startRound(input: {
