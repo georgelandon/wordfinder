@@ -39,6 +39,8 @@ export function DisplayRound({
                 ? "active"
                 : timer.phase === "countdown"
                   ? "countdown"
+                  : timer.phase === "expired"
+                    ? "scoring"
                   : round.status
             }
           />
@@ -54,16 +56,20 @@ export function DisplayRound({
           <div className="space-y-4">
             <div className="rounded-[2rem] border border-gold/25 bg-gold/10 p-5">
               <p className="text-xs uppercase tracking-[0.25em] text-mist/55">
-                {timer.phase === "countdown" ? "Round Starts In" : "Time Remaining"}
+                {timer.phase === "countdown"
+                  ? "Round Starts In"
+                  : timer.phase === "expired"
+                    ? "Round Complete"
+                    : "Time Remaining"}
               </p>
               <p className="mt-4 font-display text-7xl text-surf">
-                {formatSeconds(timer.secondsRemaining)}
+                {timer.phase === "expired" ? "DONE" : formatSeconds(timer.secondsRemaining)}
               </p>
               <div className="mt-4 h-3 overflow-hidden rounded-full bg-black/20">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-teal via-gold to-coral transition-[width]"
                   style={{
-                    width: `${Math.max(4, (1 - timer.progress) * 100)}%`
+                    width: `${timer.phase === "expired" ? 100 : Math.max(4, (1 - timer.progress) * 100)}%`
                   }}
                 />
               </div>
@@ -94,16 +100,37 @@ export function DisplayRound({
           <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
             <p className="text-xs uppercase tracking-[0.25em] text-mist/55">State</p>
             <p className="mt-3 font-display text-5xl text-surf">
-              {timer.phase === "countdown" ? "Get Ready" : "Find Words"}
+              {timer.phase === "countdown"
+                ? "Get Ready"
+                : timer.phase === "expired"
+                  ? "Scoring Round"
+                  : "Find Words"}
+            </p>
+            <p className="mt-3 text-lg text-mist/70">
+              {timer.phase === "expired"
+                ? "Locking submissions and preparing the celebration screen."
+                : timer.phase === "countdown"
+                  ? "Phones can line up on the board before the round begins."
+                  : "Players are tracing words on their phones right now."}
             </p>
           </div>
           <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-            <p className="text-xs uppercase tracking-[0.25em] text-mist/55">Rules Reminder</p>
-            <ul className="mt-3 space-y-2 text-lg text-mist/80">
-              <li>Adjacent letters only, including diagonals.</li>
-              <li>Each tile can be used once per word.</li>
-              <li>Shared duplicates score zero for everyone.</li>
-            </ul>
+            <p className="text-xs uppercase tracking-[0.25em] text-mist/55">
+              {timer.phase === "expired" ? "What Happens Next" : "Rules Reminder"}
+            </p>
+            {timer.phase === "expired" ? (
+              <ul className="mt-3 space-y-2 text-lg text-mist/80">
+                <li>Server-side scoring validates the dictionary and board paths.</li>
+                <li>The TV will celebrate found words one at a time.</li>
+                <li>Then the winner and full scoreboards appear.</li>
+              </ul>
+            ) : (
+              <ul className="mt-3 space-y-2 text-lg text-mist/80">
+                <li>Adjacent letters only, including diagonals.</li>
+                <li>Each tile can be used once per word.</li>
+                <li>Shared duplicates score zero for everyone.</li>
+              </ul>
+            )}
           </div>
         </div>
       </Panel>
