@@ -67,6 +67,22 @@ export function DisplayPage() {
             hostPlayerId={snapshot.room.host_player_id}
             presence={snapshot.presence}
           />
+        ) : snapshot.room.status === "results" && snapshot.latestRound ? (
+          <DisplaySummary
+            round={snapshot.latestRound}
+            players={snapshot.players}
+            scoredWords={snapshot.scoredWords}
+            serverOffsetMs={serverOffsetMs}
+            roundTotals={snapshot.roundTotals.map((item) => ({
+              playerId: item.player_id,
+              totalPoints: item.total_points,
+              validWordCount: item.valid_word_count,
+              duplicateWordCount: item.duplicate_word_count,
+              invalidWordCount: item.invalid_word_count,
+              rank: item.rank ?? 0
+            }))}
+            sessionTotals={snapshot.sessionTotals}
+          />
         ) : snapshot.activeRound ? (
           <DisplayRound
             room={snapshot.room}
