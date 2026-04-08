@@ -186,11 +186,22 @@ export async function fetchRoomSnapshot(
   }
 
   const rounds = (roundsResponse.data ?? []).map((item) => castRound(item));
-  const activeRound =
-    rounds.find((round) => round.id === room.active_round_id) ??
-    rounds.find((round) => round.status === "active" || round.status === "countdown") ??
-    null;
   const latestRound = rounds[0] ?? null;
+  const activeRound =
+    rounds.find(
+      (round) =>
+        round.id === room.active_round_id &&
+        (round.status === "active" ||
+          round.status === "countdown" ||
+          round.status === "scoring")
+    ) ??
+    rounds.find(
+      (round) =>
+        round.status === "active" ||
+        round.status === "countdown" ||
+        round.status === "scoring"
+    ) ??
+    null;
 
   const detailRound =
     room.status === "results" || room.status === "scoring"

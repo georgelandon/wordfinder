@@ -19,6 +19,8 @@ export function DisplayPage() {
   });
 
   const joinUrl = useMemo(() => buildHashUrl(routes.controller(roomCode)), [roomCode]);
+  const shouldShowResults =
+    snapshot?.room.status === "results" || snapshot?.latestRound?.status === "results";
 
   if (!roomCode) {
     return <div className="safe-pad text-surf">Missing room code.</div>;
@@ -67,7 +69,7 @@ export function DisplayPage() {
             hostPlayerId={snapshot.room.host_player_id}
             presence={snapshot.presence}
           />
-        ) : snapshot.room.status === "results" && snapshot.latestRound ? (
+        ) : shouldShowResults && snapshot.latestRound ? (
           <DisplaySummary
             round={snapshot.latestRound}
             players={snapshot.players}
