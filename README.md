@@ -253,6 +253,12 @@ Push to `main` and the workflow will publish `dist/`.
 6. When time expires, clients safely race to trigger `end-round-and-score`; the flow is idempotent.
 7. Results publish to all clients via Supabase Realtime and the room remains active for the next round.
 
+Rooms use a rolling idle lease instead of living forever:
+
+- meaningful activity refreshes the room lease
+- inactive rooms are cleaned up after roughly 2 hours with no joins, heartbeats, or round actions
+- expired rooms disappear from join/display flows automatically
+
 ## Tests
 
 Run:

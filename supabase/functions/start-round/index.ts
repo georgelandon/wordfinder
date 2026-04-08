@@ -23,6 +23,11 @@ Deno.serve(async (request) => {
       : DEFAULT_ROUND_DURATION_SECONDS;
 
     const supabase = createAdminClient();
+    const { error: cleanupError } = await supabase.rpc("expire_stale_rooms");
+    if (cleanupError) {
+      throw cleanupError;
+    }
+
     const { data: room, error: roomError } = await supabase
       .from("rooms")
       .select("*")
@@ -31,6 +36,9 @@ Deno.serve(async (request) => {
 
     if (roomError) {
       throw roomError;
+    }
+    if (room.status === "expired" || new Date(room.expires_at).getTime() <= Date.now()) {
+      throw new Error("This room has expired due to inactivity.");
     }
 
     const { data: player, error: playerError } = await supabase
@@ -129,6 +137,13 @@ Deno.serve(async (request) => {
 
     if (roomUpdateError) {
       throw roomUpdateError;
+    }
+
+    const { error: bumpExpiryError } = await supabase.rpc("bump_room_expiry", {
+      p_room_id: room.id
+    });
+    if (bumpExpiryError) {
+      throw bumpExpiryError;
     }
 
     await supabase

@@ -17,6 +17,10 @@ Deno.serve(async (request) => {
     const roomCode = String(body.roomCode ?? "").trim().toUpperCase();
     const roundId = String(body.roundId ?? "").trim();
     const supabase = createAdminClient();
+    const { error: cleanupError } = await supabase.rpc("expire_stale_rooms");
+    if (cleanupError) {
+      throw cleanupError;
+    }
 
     const [{ data: room, error: roomError }, { data: round, error: roundError }] =
       await Promise.all([
@@ -202,6 +206,13 @@ Deno.serve(async (request) => {
 
     if (roomCompleteError) {
       throw roomCompleteError;
+    }
+
+    const { error: bumpExpiryError } = await supabase.rpc("bump_room_expiry", {
+      p_room_id: room.id
+    });
+    if (bumpExpiryError) {
+      throw bumpExpiryError;
     }
 
     return json({ success: true, roundId });

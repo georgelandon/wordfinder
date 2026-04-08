@@ -134,6 +134,11 @@ export async function fetchRoomSnapshot(
   await ensureAnonymousUser();
   const normalizedCode = normalizeRoomCode(roomCode);
 
+  const { error: cleanupError } = await supabase.rpc("expire_stale_rooms");
+  if (cleanupError) {
+    throw cleanupError;
+  }
+
   const { data: room, error: roomError } = await supabase
     .from("rooms")
     .select("*")
@@ -145,6 +150,10 @@ export async function fetchRoomSnapshot(
   }
 
   if (!room) {
+    return null;
+  }
+
+  if (room.status === "expired" || new Date(room.expires_at).getTime() <= Date.now()) {
     return null;
   }
 
