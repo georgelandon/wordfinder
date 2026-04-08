@@ -1,8 +1,9 @@
 import { ExternalLink } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { loadDictionarySet } from "@shared/dictionary";
 import { canStartRound, getResultsPresentationState } from "@shared/game/session";
-import { normalizeWord } from "@shared/game/validation";
+import { findWordPath, normalizeWord } from "@shared/game/validation";
 import { ControllerJoinCard } from "@/components/controller/ControllerJoinCard";
 import { ControllerResults } from "@/components/controller/ControllerResults";
 import { HostPanel } from "@/components/controller/HostPanel";
@@ -39,6 +40,8 @@ export function ControllerPage() {
   const [starting, setStarting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [localWords, setLocalWords] = useState<string[]>([]);
+  const [dictionary, setDictionary] = useState<ReadonlySet<string> | null>(null);
+  const [dictionaryError, setDictionaryError] = useState<string | null>(null);
   const queueRef = useRef<string[]>([]);
   const flushTimerRef = useRef<number | null>(null);
   const serverNow = useServerNow(serverOffsetMs, snapshot?.room.status === "results");
@@ -48,7 +51,30 @@ export function ControllerPage() {
   const displayUrl = useMemo(() => buildHashUrl(routes.display(roomCode)), [roomCode]);
 
   useEffect(() => {
-    if (!activeRound || !currentPlayer) {
+    let cancelled = false;
+
+    void loadDictionarySet()
+      .then((nextDictionary) => {
+        if (!cancelled) {
+          setDictionary(nextDictionary);
+          setDictionaryError(null);
+        }
+      })
+      .catch((nextError) => {
+        if (!cancelled) {
+          setDictionaryError(
+            nextError instanceof Error ? nextError.message : "Could not load the controller dictionary."
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeRound || !currentPlayer || !dictionary) {
       setLocalWords([]);
       return;
     }
@@ -56,8 +82,12 @@ export function ControllerPage() {
     const persisted = (snapshot?.submissions ?? [])
       .filter((item) => item.player_id === currentPlayer.id)
       .map((item) => item.normalized_word);
-    setLocalWords(Array.from(new Set(persisted)));
-  }, [activeRound?.id, currentPlayer?.id, snapshot?.submissions]);
+    setLocalWords(
+      Array.from(new Set(persisted)).filter(
+        (word) => dictionary.has(word) && findWordPath(activeRound.board, word) !== null
+      )
+    );
+  }, [activeRound?.board, activeRound?.id, currentPlayer?.id, dictionary, snapshot?.submissions]);
 
   useEffect(
     () => () => {
@@ -272,6 +302,8 @@ export function ControllerPage() {
       {activeRound && isRoundLive ? (
         <MobileBoard
           board={activeRound.board}
+          dictionary={dictionary}
+          dictionaryError={dictionaryError}
           submittedWords={localWords}
           onSubmitWord={(word) => {
             const normalized = normalizeWord(word);

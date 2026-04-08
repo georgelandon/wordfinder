@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   beginSelectionPath,
   extendSelectionPath,
-  pathToWord
+  pathToWord,
+  validatePath
 } from "@shared/game/validation";
 import type { BoardMatrix } from "@shared/types";
 import { BoardGrid } from "@/components/BoardGrid";
@@ -11,6 +12,8 @@ import { cn } from "@/lib/utils";
 
 interface MobileBoardProps {
   board: BoardMatrix;
+  dictionary: ReadonlySet<string> | null;
+  dictionaryError?: string | null;
   disabled?: boolean;
   submittedWords: string[];
   onSubmitWord: (word: string) => Promise<void> | void;
@@ -18,12 +21,15 @@ interface MobileBoardProps {
 
 export function MobileBoard({
   board,
+  dictionary,
+  dictionaryError = null,
   disabled = false,
   submittedWords,
   onSubmitWord
 }: MobileBoardProps) {
   const [path, setPath] = useState<number[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
   const submittedSet = useMemo(
     () => new Set(submittedWords.map((word) => word.toLowerCase())),
@@ -33,8 +39,23 @@ export function MobileBoard({
   const currentWord = pathToWord(board, path);
   const currentWordKey = currentWord.toLowerCase();
   const currentIndices = path;
+  const currentPathIsValid = path.length > 0 && validatePath(board, path, currentWordKey);
+  const currentWordIsDictionaryValid = dictionary ? dictionary.has(currentWordKey) : false;
+  const canSubmitWord =
+    !disabled &&
+    Boolean(dictionary) &&
+    currentWordKey.length >= 3 &&
+    currentPathIsValid &&
+    currentWordIsDictionaryValid &&
+    !submittedSet.has(currentWordKey);
 
   const clearPath = () => setPath([]);
+
+  useEffect(() => {
+    if (path.length === 0) {
+      setFeedback(null);
+    }
+  }, [path.length]);
 
   useEffect(() => {
     if (!isDragging || disabled) {
@@ -87,19 +108,54 @@ export function MobileBoard({
   }, [board.length, disabled, isDragging]);
 
   const submit = async () => {
-    if (disabled || currentWordKey.length < 3) {
+    if (disabled) {
+      return;
+    }
+
+    if (!dictionary) {
+      setFeedback(dictionaryError ?? "Loading dictionary...");
+      return;
+    }
+
+    if (currentWordKey.length < 3) {
+      setFeedback("Need at least 3 letters.");
+      return;
+    }
+
+    if (!currentPathIsValid) {
+      setFeedback("Word path is not valid on the board.");
+      return;
+    }
+
+    if (!currentWordIsDictionaryValid) {
+      setFeedback("Word not found in the dictionary.");
+      return;
+    }
+
+    if (submittedSet.has(currentWordKey)) {
+      setFeedback("Already banked for this round.");
       return;
     }
 
     await onSubmitWord(currentWord);
+    setFeedback(null);
     setPath([]);
   };
 
-  const helperText = submittedSet.has(currentWordKey)
-    ? "Already banked for this round."
-    : currentWordKey.length > 0 && currentWordKey.length < 3
-      ? "Need at least 3 letters."
-      : "Tap or drag through adjacent letters.";
+  let helperText = "Tap or drag through adjacent letters.";
+  if (feedback) {
+    helperText = feedback;
+  } else if (dictionaryError) {
+    helperText = dictionaryError;
+  } else if (!dictionary) {
+    helperText = "Loading dictionary...";
+  } else if (submittedSet.has(currentWordKey)) {
+    helperText = "Already banked for this round.";
+  } else if (currentWordKey.length > 0 && currentWordKey.length < 3) {
+    helperText = "Need at least 3 letters.";
+  } else if (currentWordKey.length >= 3 && !currentWordIsDictionaryValid) {
+    helperText = "Word not found in the dictionary.";
+  }
 
   return (
     <Panel
@@ -161,12 +217,10 @@ export function MobileBoard({
           <button
             type="button"
             onClick={() => void submit()}
-            disabled={
-              disabled || currentWordKey.length < 3 || submittedSet.has(currentWordKey)
-            }
+            disabled={!canSubmitWord}
             className={cn(
               "rounded-2xl px-3 py-3 text-sm font-semibold transition",
-              disabled || currentWordKey.length < 3 || submittedSet.has(currentWordKey)
+              !canSubmitWord
                 ? "bg-gold/30 text-ink/70"
                 : "bg-gold text-ink"
             )}
