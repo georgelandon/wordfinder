@@ -6,6 +6,8 @@ interface HostPanelProps {
   loading?: boolean;
   canStart: boolean;
   playerCount: number;
+  celebrationInProgress?: boolean;
+  secondsUntilUnlocked?: number;
   onStartRound: (durationSeconds: number) => Promise<void> | void;
 }
 
@@ -14,6 +16,8 @@ export function HostPanel({
   loading = false,
   canStart,
   playerCount,
+  celebrationInProgress = false,
+  secondsUntilUnlocked,
   onStartRound
 }: HostPanelProps) {
   const [durationSeconds, setDurationSeconds] = useState(120);
@@ -48,10 +52,11 @@ export function HostPanel({
       </div>
       {!canStart ? (
         <p className="mt-3 text-sm text-gold/80">
-          Wait until the previous summary is fully published before launching the next round.
+          {celebrationInProgress
+            ? `Celebration is still playing on the TV. Next round unlocks in ${Math.max(1, secondsUntilUnlocked ?? 0)}s.`
+            : "Wait until the previous summary is fully published before launching the next round."}
         </p>
       ) : null}
     </Panel>
   );
 }
-

@@ -3,6 +3,7 @@ import {
   PRE_ROUND_COUNTDOWN_SECONDS
 } from "../_shared/game/constants.ts";
 import { generateSeededBoard } from "../_shared/game/board.ts";
+import { isResultsPresentationComplete } from "../_shared/game/session.ts";
 import { createAdminClient } from "../_shared/clients.ts";
 import { getUserFromRequest, handleOptions, json } from "../_shared/http.ts";
 
@@ -63,8 +64,29 @@ Deno.serve(async (request) => {
     }
 
     const latestRound = latestRounds?.[0];
-    if (latestRound?.status === "results" && !latestRound.summary_ready_at) {
-      throw new Error("Summary is still publishing for the previous round.");
+    if (latestRound?.status === "results") {
+      if (!latestRound.summary_ready_at) {
+        throw new Error("Summary is still publishing for the previous round.");
+      }
+
+      const { data: latestScoredWords, error: latestScoredWordsError } = await supabase
+        .from("scored_words")
+        .select("normalized_word, status")
+        .eq("round_id", latestRound.id);
+
+      if (latestScoredWordsError) {
+        throw latestScoredWordsError;
+      }
+
+      if (
+        !isResultsPresentationComplete(
+          latestRound,
+          latestScoredWords ?? [],
+          Date.now()
+        )
+      ) {
+        throw new Error("Let the celebration and scoreboards finish on the display first.");
+      }
     }
 
     const roundNumber = room.current_round_number + 1;

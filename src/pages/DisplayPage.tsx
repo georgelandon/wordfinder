@@ -79,6 +79,8 @@ export function DisplayPage() {
           <DisplaySummary
             round={snapshot.latestRound}
             players={snapshot.players}
+            scoredWords={snapshot.scoredWords}
+            serverOffsetMs={serverOffsetMs}
             roundTotals={snapshot.roundTotals.map((item) => ({
               playerId: item.player_id,
               totalPoints: item.total_points,
@@ -96,4 +98,3 @@ export function DisplayPage() {
     </div>
   );
 }
-

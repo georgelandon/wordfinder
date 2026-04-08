@@ -3,6 +3,10 @@ export const DEFAULT_ROUND_DURATION_SECONDS = 120;
 export const PRE_ROUND_COUNTDOWN_SECONDS = 3;
 export const MINIMUM_WORD_LENGTH = 3;
 export const HOST_STALE_AFTER_MS = 35_000;
+export const RESULTS_CELEBRATION_INTRO_MS = 1_200;
+export const RESULTS_WORD_REVEAL_MS = 1_700;
+export const RESULTS_EMPTY_REVEAL_MS = 2_500;
+export const RESULTS_SUMMARY_TRANSITION_MS = 900;
 
 export const BOGGLE_DICE_4X4 = [
   "AAEEGN",
@@ -22,4 +26,3 @@ export const BOGGLE_DICE_4X4 = [
   "HIMNQU",
   "HLNNRZ"
 ] as const;
-

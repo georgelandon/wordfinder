@@ -1,21 +1,11 @@
-import { useEffect, useState } from "react";
-import { nowWithOffset } from "@/lib/time";
+import { useServerNow } from "./useServerNow";
 
 export function useRoundTimer(
   startsAt: string | undefined,
   endsAt: string | undefined,
   serverOffsetMs: number
 ) {
-  const [now, setNow] = useState(() => nowWithOffset(serverOffsetMs));
-
-  useEffect(() => {
-    setNow(nowWithOffset(serverOffsetMs));
-    const interval = window.setInterval(() => {
-      setNow(nowWithOffset(serverOffsetMs));
-    }, 250);
-
-    return () => clearInterval(interval);
-  }, [serverOffsetMs]);
+  const now = useServerNow(serverOffsetMs);
 
   if (!startsAt || !endsAt) {
     return {

@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { canStartRound } from "@shared/game/session";
+import { canStartRound, getResultsPresentationState } from "@shared/game/session";
 import { normalizeWord } from "@shared/game/validation";
 import { ControllerJoinCard } from "@/components/controller/ControllerJoinCard";
 import { ControllerResults } from "@/components/controller/ControllerResults";
@@ -10,6 +10,7 @@ import { MobileBoard } from "@/components/controller/MobileBoard";
 import { Panel } from "@/components/Panel";
 import { StatusPill } from "@/components/StatusPill";
 import { useRoomSnapshot } from "@/hooks/useRoomSnapshot";
+import { useServerNow } from "@/hooks/useServerNow";
 import { buildHashUrl } from "@/lib/links";
 import {
   createOrJoinRoom,
@@ -40,6 +41,7 @@ export function ControllerPage() {
   const [localWords, setLocalWords] = useState<string[]>([]);
   const queueRef = useRef<string[]>([]);
   const flushTimerRef = useRef<number | null>(null);
+  const serverNow = useServerNow(serverOffsetMs, snapshot?.room.status === "results");
 
   const currentPlayer = resolveCurrentPlayer(snapshot?.players ?? [], user?.id);
   const activeRound = snapshot?.activeRound ?? null;
@@ -138,9 +140,19 @@ export function ControllerPage() {
     }
   };
 
+  const resultsPresentation =
+    snapshot?.latestRound && snapshot.room.status === "results"
+      ? getResultsPresentationState(snapshot.latestRound, snapshot.scoredWords, serverNow)
+      : null;
   const canHostStart =
     snapshot !== null &&
-    canStartRound(snapshot.room.status, snapshot.activeRound, snapshot.latestRound);
+    canStartRound(
+      snapshot.room.status,
+      snapshot.activeRound,
+      snapshot.latestRound,
+      snapshot.scoredWords,
+      serverNow
+    );
 
   const personalRoundTotal = snapshot?.roundTotals.find(
     (item) => item.player_id === currentPlayer?.id
@@ -221,6 +233,13 @@ export function ControllerPage() {
             loading={starting}
             canStart={canHostStart}
             playerCount={snapshot.players.length}
+            celebrationInProgress={resultsPresentation?.stage === "celebration"}
+            secondsUntilUnlocked={
+              resultsPresentation?.millisecondsUntilSummary !== null &&
+              resultsPresentation?.millisecondsUntilSummary !== undefined
+                ? Math.ceil(resultsPresentation.millisecondsUntilSummary / 1000)
+                : undefined
+            }
             onStartRound={handleStartRound}
           />
         ) : (

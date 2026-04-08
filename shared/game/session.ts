@@ -1,9 +1,16 @@
-import { HOST_STALE_AFTER_MS } from "./constants";
+import {
+  HOST_STALE_AFTER_MS,
+  RESULTS_CELEBRATION_INTRO_MS,
+  RESULTS_EMPTY_REVEAL_MS,
+  RESULTS_SUMMARY_TRANSITION_MS,
+  RESULTS_WORD_REVEAL_MS
+} from "./constants";
 import type {
   PlayerRecord,
   PlayerRoundSummary,
   RoomStatus,
   RoundRecord,
+  ScoredWordRecord,
   SessionTotalRecord
 } from "../types";
 
@@ -51,10 +58,115 @@ export function resolveHostPlayerId(
   return pickNextHost(players, referenceTime);
 }
 
+type ResultsRoundLike =
+  | Pick<RoundRecord, "status" | "results_published_at" | "summary_ready_at" | "scored_at">
+  | null;
+type ResultsWordLike = Pick<ScoredWordRecord, "normalized_word" | "status">;
+
+function resultsAnchorMs(round: ResultsRoundLike) {
+  const anchor =
+    round?.results_published_at ?? round?.summary_ready_at ?? round?.scored_at ?? null;
+
+  return anchor ? new Date(anchor).getTime() : null;
+}
+
+export function countFoundCelebrationWords(scoredWords: ResultsWordLike[]) {
+  return new Set(
+    scoredWords
+      .filter(
+        (item) => item.status === "valid" || item.status === "duplicate_global"
+      )
+      .map((item) => item.normalized_word)
+  ).size;
+}
+
+export function getResultsPresentationSummaryAt(
+  round: ResultsRoundLike,
+  foundWordCount: number
+) {
+  const anchorMs = resultsAnchorMs(round);
+  if (anchorMs === null) {
+    return null;
+  }
+
+  const revealDurationMs =
+    foundWordCount > 0
+      ? foundWordCount * RESULTS_WORD_REVEAL_MS
+      : RESULTS_EMPTY_REVEAL_MS;
+
+  return (
+    anchorMs +
+    RESULTS_CELEBRATION_INTRO_MS +
+    revealDurationMs +
+    RESULTS_SUMMARY_TRANSITION_MS
+  );
+}
+
+export function getResultsPresentationState(
+  round: ResultsRoundLike,
+  scoredWords: ResultsWordLike[] = [],
+  referenceTime = Date.now()
+) {
+  const foundWordCount = countFoundCelebrationWords(scoredWords);
+  const summaryAtMs = getResultsPresentationSummaryAt(round, foundWordCount);
+
+  if (!round || round.status !== "results") {
+    return {
+      stage: "summary" as const,
+      canStartNextRound: true,
+      foundWordCount,
+      currentRevealIndex: null,
+      millisecondsUntilSummary: 0
+    };
+  }
+
+  if (summaryAtMs === null) {
+    return {
+      stage: "celebration" as const,
+      canStartNextRound: false,
+      foundWordCount,
+      currentRevealIndex: foundWordCount > 0 ? 0 : null,
+      millisecondsUntilSummary: null
+    };
+  }
+
+  if (referenceTime >= summaryAtMs) {
+    return {
+      stage: "summary" as const,
+      canStartNextRound: true,
+      foundWordCount,
+      currentRevealIndex: foundWordCount > 0 ? foundWordCount - 1 : null,
+      millisecondsUntilSummary: 0
+    };
+  }
+
+  const anchorMs = resultsAnchorMs(round) ?? summaryAtMs;
+  const revealClock = Math.max(0, referenceTime - anchorMs - RESULTS_CELEBRATION_INTRO_MS);
+  const currentRevealIndex =
+    foundWordCount > 0
+      ? Math.min(foundWordCount - 1, Math.floor(revealClock / RESULTS_WORD_REVEAL_MS))
+      : null;
+
+  return {
+    stage: "celebration" as const,
+    canStartNextRound: false,
+    foundWordCount,
+    currentRevealIndex,
+    millisecondsUntilSummary: Math.max(0, summaryAtMs - referenceTime)
+  };
+}
+
 export function canStartRound(
   roomStatus: RoomStatus,
   activeRound: Pick<RoundRecord, "status"> | null,
-  latestRound: Pick<RoundRecord, "status" | "summary_ready_at"> | null
+  latestRound:
+    | Pick<
+        RoundRecord,
+        "status" | "summary_ready_at" | "results_published_at" | "scored_at"
+      >
+    | null,
+  scoredWords: ResultsWordLike[] = [],
+  referenceTime = Date.now()
 ) {
   if (roomStatus === "active" || roomStatus === "countdown" || roomStatus === "scoring") {
     return false;
@@ -69,8 +181,13 @@ export function canStartRound(
     return false;
   }
 
-  if (latestRound?.status === "results" && !latestRound.summary_ready_at) {
-    return false;
+  if (latestRound?.status === "results") {
+    if (!latestRound.summary_ready_at) {
+      return false;
+    }
+
+    return getResultsPresentationState(latestRound, scoredWords, referenceTime)
+      .canStartNextRound;
   }
 
   return true;

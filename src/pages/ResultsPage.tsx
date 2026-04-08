@@ -7,7 +7,7 @@ export function ResultsPage() {
   const params = useParams();
   const roomCode = (params.roomCode ?? "").toUpperCase();
   const roundId = params.roundId ?? "";
-  const { snapshot, loading, error } = useRoomSnapshot({
+  const { snapshot, loading, error, serverOffsetMs } = useRoomSnapshot({
     roomCode,
     presenceKind: "display",
     presenceLabel: "Results View"
@@ -34,6 +34,8 @@ export function ResultsPage() {
     <DisplaySummary
       round={snapshot.latestRound}
       players={snapshot.players}
+      scoredWords={snapshot.scoredWords}
+      serverOffsetMs={serverOffsetMs}
       roundTotals={snapshot.roundTotals.map((item) => ({
         playerId: item.player_id,
         totalPoints: item.total_points,
@@ -46,4 +48,3 @@ export function ResultsPage() {
     />
   );
 }
-

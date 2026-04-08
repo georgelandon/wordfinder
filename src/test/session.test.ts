@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyRoundTotalsToSessionTotals,
   canStartRound,
+  getResultsPresentationState,
   pickNextHost,
   resolveHostPlayerId
 } from "@shared/game/session";
@@ -60,18 +61,78 @@ describe("round sequencing", () => {
     expect(
       canStartRound("results", null, {
         status: "results",
-        summary_ready_at: null
+        summary_ready_at: null,
+        results_published_at: null,
+        scored_at: null
       })
     ).toBe(false);
   });
 
-  it("allows a new round once results are published", () => {
+  it("keeps the next round locked while the celebration reel is still running", () => {
     expect(
       canStartRound("results", null, {
         status: "results",
-        summary_ready_at: "2026-04-06T20:04:00.000Z"
-      })
+        summary_ready_at: "2026-04-06T20:04:00.000Z",
+        results_published_at: "2026-04-06T20:04:00.000Z",
+        scored_at: "2026-04-06T20:04:00.000Z"
+      },
+      [
+        { normalized_word: "toast", status: "valid" },
+        { normalized_word: "stone", status: "valid" }
+      ],
+      Date.parse("2026-04-06T20:04:01.000Z")
+    )).toBe(false);
+  });
+
+  it("allows a new round once the celebration hands off to the summary", () => {
+    expect(
+      canStartRound("results", null, {
+        status: "results",
+        summary_ready_at: "2026-04-06T20:04:00.000Z",
+        results_published_at: "2026-04-06T20:04:00.000Z",
+        scored_at: "2026-04-06T20:04:00.000Z"
+      },
+      [
+        { normalized_word: "toast", status: "valid" },
+        { normalized_word: "stone", status: "valid" }
+      ],
+      Date.parse("2026-04-06T20:04:08.000Z")
+    )
     ).toBe(true);
+  });
+
+  it("reports the presentation stage for celebration and summary screens", () => {
+    expect(
+      getResultsPresentationState(
+        {
+          status: "results",
+          summary_ready_at: "2026-04-06T20:04:00.000Z",
+          results_published_at: "2026-04-06T20:04:00.000Z",
+          scored_at: "2026-04-06T20:04:00.000Z"
+        },
+        [
+          { normalized_word: "toast", status: "valid" },
+          { normalized_word: "stone", status: "duplicate_global" }
+        ],
+        Date.parse("2026-04-06T20:04:01.000Z")
+      ).stage
+    ).toBe("celebration");
+
+    expect(
+      getResultsPresentationState(
+        {
+          status: "results",
+          summary_ready_at: "2026-04-06T20:04:00.000Z",
+          results_published_at: "2026-04-06T20:04:00.000Z",
+          scored_at: "2026-04-06T20:04:00.000Z"
+        },
+        [
+          { normalized_word: "toast", status: "valid" },
+          { normalized_word: "stone", status: "duplicate_global" }
+        ],
+        Date.parse("2026-04-06T20:04:08.000Z")
+      ).stage
+    ).toBe("summary");
   });
 });
 
