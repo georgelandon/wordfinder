@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { findWordPath, validatePath } from "@shared/game/validation";
+import {
+  beginSelectionPath,
+  extendSelectionPath,
+  findWordPath,
+  validatePath
+} from "@shared/game/validation";
 
 const board = [
   ["Qu", "E", "S", "T"],
@@ -24,5 +29,13 @@ describe("board validation", () => {
   it("rejects words that cannot be traced", () => {
     expect(findWordPath(board, "stone")).toBeNull();
   });
-});
 
+  it("extends drag selection and trims when dragging backward", () => {
+    expect(extendSelectionPath([0], 1, board.length)).toEqual([0, 1]);
+    expect(extendSelectionPath([0, 1, 2], 1, board.length)).toEqual([0, 1]);
+  });
+
+  it("starts a fresh gesture on a non-adjacent tile", () => {
+    expect(beginSelectionPath([0, 1], 15, board.length)).toEqual([15]);
+  });
+});

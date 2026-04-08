@@ -62,6 +62,7 @@ export function BoardGrid({
         key={index}
         type="button"
         {...commonProps}
+        data-board-index={index}
         onPointerDown={() => onTilePointerDown?.(index)}
         onPointerEnter={() => onTilePointerEnter?.(index)}
         onPointerUp={onTilePointerUp as PointerEventHandler<HTMLButtonElement>}
@@ -82,4 +83,3 @@ export function BoardGrid({
     </div>
   );
 }
-

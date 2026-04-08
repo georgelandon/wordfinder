@@ -45,6 +45,45 @@ export function getNeighborIndices(index: number, size: number) {
   return neighbors;
 }
 
+export function extendSelectionPath(path: BoardPath, index: number, size: number) {
+  if (path.length === 0) {
+    return [index];
+  }
+
+  const last = path[path.length - 1];
+  if (last === index) {
+    return path;
+  }
+
+  const previous = path[path.length - 2];
+  if (previous === index) {
+    return path.slice(0, -1);
+  }
+
+  if (path.includes(index)) {
+    return path;
+  }
+
+  if (!getNeighborIndices(last, size).includes(index)) {
+    return path;
+  }
+
+  return [...path, index];
+}
+
+export function beginSelectionPath(path: BoardPath, index: number, size: number) {
+  if (path.length === 0) {
+    return [index];
+  }
+
+  const last = path[path.length - 1];
+  if (index === last || getNeighborIndices(last, size).includes(index)) {
+    return extendSelectionPath(path, index, size);
+  }
+
+  return [index];
+}
+
 export function pathToWord(board: BoardMatrix, path: BoardPath) {
   const flat = board.flat();
   return path.map((index) => flat[index] ?? "").join("");
@@ -148,4 +187,3 @@ export function findWordPath(board: BoardMatrix, word: string): BoardPath | null
 
   return null;
 }
-

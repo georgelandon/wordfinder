@@ -1,5 +1,9 @@
-import { useMemo, useState } from "react";
-import { getNeighborIndices, pathToWord } from "@shared/game/validation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  beginSelectionPath,
+  extendSelectionPath,
+  pathToWord
+} from "@shared/game/validation";
 import type { BoardMatrix } from "@shared/types";
 import { BoardGrid } from "@/components/BoardGrid";
 import { Panel } from "@/components/Panel";
@@ -20,6 +24,7 @@ export function MobileBoard({
 }: MobileBoardProps) {
   const [path, setPath] = useState<number[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const boardRef = useRef<HTMLDivElement | null>(null);
   const submittedSet = useMemo(
     () => new Set(submittedWords.map((word) => word.toLowerCase())),
     [submittedWords]
@@ -29,35 +34,57 @@ export function MobileBoard({
   const currentWordKey = currentWord.toLowerCase();
   const currentIndices = path;
 
-  const appendIndex = (index: number) => {
-    setPath((current) => {
-      if (current.length === 0) {
-        return [index];
-      }
-
-      const last = current[current.length - 1];
-      if (last === index) {
-        return current;
-      }
-
-      const previous = current[current.length - 2];
-      if (previous === index) {
-        return current.slice(0, -1);
-      }
-
-      if (current.includes(index)) {
-        return current;
-      }
-
-      if (!getNeighborIndices(last, board.length).includes(index)) {
-        return current;
-      }
-
-      return [...current, index];
-    });
-  };
-
   const clearPath = () => setPath([]);
+
+  useEffect(() => {
+    if (!isDragging || disabled) {
+      return;
+    }
+
+    const getTileIndexFromPoint = (clientX: number, clientY: number) => {
+      const boardElement = boardRef.current;
+      const target = document.elementFromPoint(clientX, clientY);
+      if (!boardElement || !(target instanceof Element)) {
+        return null;
+      }
+
+      const tile = target.closest<HTMLElement>("[data-board-index]");
+      if (!tile || !boardElement.contains(tile)) {
+        return null;
+      }
+
+      const rawIndex = tile.dataset.boardIndex;
+      if (!rawIndex) {
+        return null;
+      }
+
+      const index = Number(rawIndex);
+      return Number.isInteger(index) ? index : null;
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const index = getTileIndexFromPoint(event.clientX, event.clientY);
+      if (index === null) {
+        return;
+      }
+
+      setPath((current) => extendSelectionPath(current, index, board.length));
+    };
+
+    const stopDragging = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopDragging);
+    window.addEventListener("pointercancel", stopDragging);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopDragging);
+      window.removeEventListener("pointercancel", stopDragging);
+    };
+  }, [board.length, disabled, isDragging]);
 
   const submit = async () => {
     if (disabled || currentWordKey.length < 3) {
@@ -80,7 +107,10 @@ export function MobileBoard({
       subtitle="Trace words on your phone. The server validates everything at the end of the round."
     >
       <div className="space-y-4">
-        <div className="rounded-[1.75rem] border border-white/10 bg-black/20 p-3">
+        <div
+          ref={boardRef}
+          className="touch-none select-none rounded-[1.75rem] border border-white/10 bg-black/20 p-3"
+        >
           <BoardGrid
             board={board}
             interactive={!disabled}
@@ -92,17 +122,7 @@ export function MobileBoard({
                 return;
               }
               setIsDragging(true);
-              if (path.length === 0) {
-                setPath([index]);
-              } else {
-                appendIndex(index);
-              }
-            }}
-            onTilePointerEnter={(index) => {
-              if (!isDragging || disabled) {
-                return;
-              }
-              appendIndex(index);
+              setPath((current) => beginSelectionPath(current, index, board.length));
             }}
             onTilePointerUp={() => setIsDragging(false)}
           />
