@@ -17,6 +17,7 @@ interface DisplaySummaryProps {
   sessionTotals: SessionTotalRecord[];
   scoredWords: ScoredWordRecord[];
   serverOffsetMs: number;
+  presentationAnchorMs?: number | null;
 }
 
 interface CelebrationEntry {
@@ -84,11 +85,21 @@ export function DisplaySummary({
   roundTotals,
   sessionTotals,
   scoredWords,
-  serverOffsetMs
+  serverOffsetMs,
+  presentationAnchorMs = null
 }: DisplaySummaryProps) {
   const now = useServerNow(serverOffsetMs, round.status === "results");
   const celebrationEntries = buildCelebrationEntries(scoredWords);
-  const presentation = getResultsPresentationState(round, scoredWords, now);
+  const presentationRound =
+    presentationAnchorMs === null
+      ? round
+      : {
+          ...round,
+          scored_at: new Date(presentationAnchorMs).toISOString(),
+          summary_ready_at: new Date(presentationAnchorMs).toISOString(),
+          results_published_at: new Date(presentationAnchorMs).toISOString()
+        };
+  const presentation = getResultsPresentationState(presentationRound, scoredWords, now);
   const playerMap = new Map(players.map((player) => [player.id, player]));
   const currentCelebrationEntry =
     presentation.currentRevealIndex !== null
