@@ -20,7 +20,13 @@ export function DisplayPage() {
 
   const joinUrl = useMemo(() => buildHashUrl(routes.controller(roomCode)), [roomCode]);
   const shouldShowResults =
-    snapshot?.room.status === "results" || snapshot?.latestRound?.status === "results";
+    snapshot?.room.status === "results" ||
+    snapshot?.latestRound?.status === "results" ||
+    Boolean(
+      snapshot?.latestRound?.results_published_at ??
+        snapshot?.latestRound?.summary_ready_at ??
+        snapshot?.latestRound?.scored_at
+    );
 
   if (!roomCode) {
     return <div className="safe-pad text-surf">Missing room code.</div>;

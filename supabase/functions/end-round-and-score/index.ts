@@ -53,6 +53,35 @@ Deno.serve(async (request) => {
     }
 
     if (round.status === "results" || round.scored_at) {
+      const completedAt =
+        round.results_published_at ?? round.summary_ready_at ?? round.scored_at ?? new Date().toISOString();
+
+      const { error: repairRoundError } = await supabase
+        .from("rounds")
+        .update({
+          status: "results",
+          scored_at: completedAt,
+          summary_ready_at: round.summary_ready_at ?? completedAt,
+          results_published_at: round.results_published_at ?? completedAt
+        })
+        .eq("id", round.id);
+
+      if (repairRoundError) {
+        throw repairRoundError;
+      }
+
+      const { error: repairRoomError } = await supabase
+        .from("rooms")
+        .update({
+          status: "results",
+          active_round_id: null
+        })
+        .eq("id", room.id);
+
+      if (repairRoomError) {
+        throw repairRoomError;
+      }
+
       return json({ success: true, roundId });
     }
 
