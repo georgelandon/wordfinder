@@ -161,6 +161,7 @@ export function MobileBoard({
     <Panel
       title="Your Controller"
       subtitle="Trace words on your phone. The server validates everything at the end of the round."
+      className="p-4 sm:p-5"
     >
       <div className="space-y-4">
         <div

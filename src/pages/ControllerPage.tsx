@@ -224,114 +224,124 @@ export function ControllerPage() {
   const isHost = snapshot.room.host_player_id === currentPlayer.id;
   const isRoundLive =
     activeRound && (activeRound.status === "countdown" || activeRound.status === "active");
-
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-[1fr,0.8fr]">
-        <Panel
-          title={`${currentPlayer.nickname} - ${isHost ? "Host" : "Player"}`}
-          subtitle={`Room ${snapshot.room.code} - Display stays on the TV while you control from your phone.`}
-          headerRight={<StatusPill status={snapshot.room.status} />}
-        >
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => void toggleReady()}
-              className={`rounded-2xl px-4 py-3 font-semibold ${
-                currentPlayer.ready
-                  ? "bg-mint/15 text-mint"
-                  : "border border-white/10 bg-white/[0.05] text-surf"
-              }`}
-            >
-              {currentPlayer.ready ? "Ready" : "Mark Ready"}
-            </button>
-            <a
-              href={displayUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 font-semibold text-surf"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Open TV Display
-            </a>
-          </div>
-          {actionError ? <p className="mt-4 text-sm text-coral">{actionError}</p> : null}
-        </Panel>
-        {isHost ? (
-          <HostPanel
-            disabled={Boolean(isRoundLive)}
-            loading={starting}
-            canStart={canHostStart}
-            playerCount={snapshot.players.length}
-            celebrationInProgress={resultsPresentation?.stage === "celebration"}
-            secondsUntilUnlocked={
-              resultsPresentation?.millisecondsUntilSummary !== null &&
-              resultsPresentation?.millisecondsUntilSummary !== undefined
-                ? Math.ceil(resultsPresentation.millisecondsUntilSummary / 1000)
-                : undefined
-            }
-            onStartRound={handleStartRound}
-          />
-        ) : (
-          <Panel
-            title="Stand By"
-            subtitle="The host controls round starts, but your ready state and submissions stay synced in realtime."
+  const controllerMeta = (
+    <div className="grid gap-4 sm:gap-6 xl:grid-cols-[1fr,0.8fr]">
+      <Panel
+        title={`${currentPlayer.nickname} - ${isHost ? "Host" : "Player"}`}
+        subtitle={`Room ${snapshot.room.code} - Display stays on the TV while you control from your phone.`}
+        headerRight={<StatusPill status={snapshot.room.status} />}
+      >
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => void toggleReady()}
+            className={`rounded-2xl px-4 py-3 font-semibold ${
+              currentPlayer.ready
+                ? "bg-mint/15 text-mint"
+                : "border border-white/10 bg-white/[0.05] text-surf"
+            }`}
           >
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-mist/55">Players</p>
-                <p className="mt-2 font-display text-4xl text-gold">{snapshot.players.length}</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-mist/55">Round</p>
-                <p className="mt-2 font-display text-4xl text-surf">
-                  {snapshot.latestRound?.round_number ?? 0}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-mist/55">Clock Sync</p>
-                <p className="mt-2 font-display text-4xl text-teal">
-                  {Math.abs(Math.round(serverOffsetMs))}ms
-                </p>
-              </div>
-            </div>
-          </Panel>
-        )}
-      </div>
-
-      {activeRound && isRoundLive ? (
-        <MobileBoard
-          board={activeRound.board}
-          dictionary={dictionary}
-          dictionaryError={dictionaryError}
-          submittedWords={localWords}
-          onSubmitWord={(word) => {
-            const normalized = normalizeWord(word);
-            if (localWords.includes(normalized)) {
-              return;
-            }
-            setLocalWords((current) => [...current, normalized]);
-            enqueueWord(normalized);
-          }}
-        />
-      ) : (
-        <ControllerResults
-          player={currentPlayer}
-          roundTotal={
-            personalRoundTotal
-              ? {
-                  playerId: personalRoundTotal.player_id,
-                  totalPoints: personalRoundTotal.total_points,
-                  validWordCount: personalRoundTotal.valid_word_count,
-                  duplicateWordCount: personalRoundTotal.duplicate_word_count,
-                  invalidWordCount: personalRoundTotal.invalid_word_count,
-                  rank: personalRoundTotal.rank ?? 0
-                }
+            {currentPlayer.ready ? "Ready" : "Mark Ready"}
+          </button>
+          <a
+            href={displayUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 font-semibold text-surf"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Open TV Display
+          </a>
+        </div>
+        {actionError ? <p className="mt-4 text-sm text-coral">{actionError}</p> : null}
+      </Panel>
+      {isHost ? (
+        <HostPanel
+          disabled={Boolean(isRoundLive)}
+          loading={starting}
+          canStart={canHostStart}
+          playerCount={snapshot.players.length}
+          celebrationInProgress={resultsPresentation?.stage === "celebration"}
+          secondsUntilUnlocked={
+            resultsPresentation?.millisecondsUntilSummary !== null &&
+            resultsPresentation?.millisecondsUntilSummary !== undefined
+              ? Math.ceil(resultsPresentation.millisecondsUntilSummary / 1000)
               : undefined
           }
-          sessionTotal={personalSessionTotal}
-          scoredWords={personalScoredWords}
+          onStartRound={handleStartRound}
         />
+      ) : (
+        <Panel
+          title="Stand By"
+          subtitle="The host controls round starts, but your ready state and submissions stay synced in realtime."
+        >
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-mist/55">Players</p>
+              <p className="mt-2 font-display text-4xl text-gold">{snapshot.players.length}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-mist/55">Round</p>
+              <p className="mt-2 font-display text-4xl text-surf">
+                {snapshot.latestRound?.round_number ?? 0}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-mist/55">Clock Sync</p>
+              <p className="mt-2 font-display text-4xl text-teal">
+                {Math.abs(Math.round(serverOffsetMs))}ms
+              </p>
+            </div>
+          </div>
+        </Panel>
+      )}
+    </div>
+  );
+  const liveBoard = activeRound ? (
+    <MobileBoard
+      board={activeRound.board}
+      dictionary={dictionary}
+      dictionaryError={dictionaryError}
+      submittedWords={localWords}
+      onSubmitWord={(word) => {
+        const normalized = normalizeWord(word);
+        if (localWords.includes(normalized)) {
+          return;
+        }
+        setLocalWords((current) => [...current, normalized]);
+        enqueueWord(normalized);
+      }}
+    />
+  ) : null;
+
+  return (
+    <div className="flex flex-col gap-4 sm:gap-6">
+      {isRoundLive ? (
+        <>
+          <div className="order-1">{liveBoard}</div>
+          <div className="order-2">{controllerMeta}</div>
+        </>
+      ) : (
+        <>
+          {controllerMeta}
+          <ControllerResults
+            player={currentPlayer}
+            roundTotal={
+              personalRoundTotal
+                ? {
+                    playerId: personalRoundTotal.player_id,
+                    totalPoints: personalRoundTotal.total_points,
+                    validWordCount: personalRoundTotal.valid_word_count,
+                    duplicateWordCount: personalRoundTotal.duplicate_word_count,
+                    invalidWordCount: personalRoundTotal.invalid_word_count,
+                    rank: personalRoundTotal.rank ?? 0
+                  }
+                : undefined
+            }
+            sessionTotal={personalSessionTotal}
+            scoredWords={personalScoredWords}
+          />
+        </>
       )}
     </div>
   );
