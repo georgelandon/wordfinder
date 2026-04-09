@@ -254,6 +254,7 @@ export function useRoomSnapshot({
           roomCode: normalizedRoomCode,
           roundId: activeRoundId
         })
+          .then(() => refresh())
           .catch(() => undefined)
           .finally(() => {
             pendingAutoCloseRef.current = null;
@@ -262,7 +263,40 @@ export function useRoomSnapshot({
     }, 1_000);
 
     return () => clearInterval(tick);
-  }, [activeRoundEndsAt, activeRoundId, activeRoundStatus, normalizedRoomCode, serverOffsetMs]);
+  }, [activeRoundEndsAt, activeRoundId, activeRoundStatus, normalizedRoomCode, refresh, serverOffsetMs]);
+
+  useEffect(() => {
+    if (!user || !snapshot) {
+      return;
+    }
+
+    const roundExpired = activeRoundEndsAt
+      ? nowWithOffset(serverOffsetMs) >= new Date(activeRoundEndsAt).getTime() + 1000
+      : false;
+    const shouldPoll =
+      roomStatus === "scoring" ||
+      activeRoundStatus === "scoring" ||
+      (Boolean(activeRoundId) && roundExpired);
+
+    if (!shouldPoll) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      void refresh().catch(() => undefined);
+    }, 1_500);
+
+    return () => clearInterval(interval);
+  }, [
+    activeRoundEndsAt,
+    activeRoundId,
+    activeRoundStatus,
+    refresh,
+    roomStatus,
+    serverOffsetMs,
+    snapshot,
+    user
+  ]);
 
   return useMemo(
     () => ({
