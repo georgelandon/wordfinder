@@ -11,66 +11,113 @@ import type {
 } from "@shared/types";
 import { supabase } from "./supabase";
 
+const SESSION_REFRESH_BUFFER_MS = 30_000;
+
 function normalizeRoomCode(roomCode: string) {
   return roomCode.trim().toUpperCase();
 }
 
-export async function ensureAnonymousUser(): Promise<User> {
-  const {
-    data: { session }
-  } = await supabase.auth.getSession();
-  if (session?.user) {
-    return session.user;
-  }
+async function clearPersistedSession() {
+  await supabase.auth.signOut().catch(() => undefined);
+}
 
+async function createAnonymousSession() {
   const { data, error } = await supabase.auth.signInAnonymously();
   if (error) {
     throw error;
   }
 
-  if (!data.user) {
-    throw new Error("Anonymous auth did not return a user.");
+  if (!data.session?.user || !data.session.access_token) {
+    throw new Error("Anonymous auth did not return a usable session.");
   }
 
-  return data.user;
+  return data.session;
 }
 
-async function getAccessToken() {
+async function getFreshSession(options?: { forceRefresh?: boolean; resetIfInvalid?: boolean }) {
   const {
     data: { session }
   } = await supabase.auth.getSession();
 
-  if (session?.access_token) {
-    return session.access_token;
+  const expiresAtMs = session?.expires_at ? session.expires_at * 1000 : 0;
+  const shouldRefresh =
+    options?.forceRefresh ||
+    !session?.access_token ||
+    expiresAtMs <= Date.now() + SESSION_REFRESH_BUFFER_MS;
+
+  if (!shouldRefresh && session?.user) {
+    return session;
   }
 
-  await ensureAnonymousUser();
+  if (session?.refresh_token) {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (!error && data.session?.user && data.session.access_token) {
+      return data.session;
+    }
+  }
 
-  const {
-    data: { session: refreshedSession }
-  } = await supabase.auth.getSession();
+  if (options?.resetIfInvalid && session) {
+    await clearPersistedSession();
+  }
 
-  if (!refreshedSession?.access_token) {
+  return createAnonymousSession();
+}
+
+function isRecoverableAuthError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("jwt") ||
+    message.includes("authorization") ||
+    message.includes("verify user") ||
+    message.includes("token") ||
+    message.includes("session")
+  );
+}
+
+export async function ensureAnonymousUser(): Promise<User> {
+  const session = await getFreshSession({ resetIfInvalid: true });
+  return session.user;
+}
+
+async function getAccessToken() {
+  const session = await getFreshSession({ resetIfInvalid: true });
+  if (!session.access_token) {
     throw new Error("Missing Supabase access token for Edge Function call.");
   }
 
-  return refreshedSession.access_token;
+  return session.access_token;
 }
 
 async function invokeFunction<T>(name: string, body: Record<string, unknown>) {
-  const accessToken = await getAccessToken();
-  const { data, error } = await supabase.functions.invoke(name, {
-    body,
-    headers: {
-      Authorization: `Bearer ${accessToken}`
-    }
-  });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const accessToken =
+      attempt === 0
+        ? await getAccessToken()
+        : (await getFreshSession({ forceRefresh: true, resetIfInvalid: true })).access_token;
+    const { data, error } = await supabase.functions.invoke(name, {
+      body,
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
 
-  if (error) {
+    if (!error) {
+      return data as T;
+    }
+
+    if (attempt === 0 && isRecoverableAuthError(error)) {
+      await clearPersistedSession();
+      continue;
+    }
+
     throw error;
   }
 
-  return data as T;
+  throw new Error(`Unable to invoke ${name}.`);
 }
 
 export async function createOrJoinRoom(input: {
