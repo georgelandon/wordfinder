@@ -1,4 +1,9 @@
-import type { User } from "@supabase/supabase-js";
+import {
+  FunctionsFetchError,
+  FunctionsHttpError,
+  FunctionsRelayError,
+  type User
+} from "@supabase/supabase-js";
 import { normalizeWord } from "@shared/game/validation";
 import type {
   BoardMatrix,
@@ -64,6 +69,11 @@ async function getFreshSession(options?: { forceRefresh?: boolean; resetIfInvali
 }
 
 function isRecoverableAuthError(error: unknown) {
+  if (error instanceof FunctionsHttpError) {
+    const status = (error.context as Response | undefined)?.status;
+    return status === 401 || status === 403;
+  }
+
   if (!(error instanceof Error)) {
     return false;
   }
@@ -76,6 +86,59 @@ function isRecoverableAuthError(error: unknown) {
     message.includes("token") ||
     message.includes("session")
   );
+}
+
+async function toFriendlyFunctionError(error: unknown, functionName: string) {
+  if (error instanceof FunctionsHttpError) {
+    const response = error.context as Response | undefined;
+    let details: string | null = null;
+
+    if (response) {
+      try {
+        const contentType = response.headers.get("content-type") ?? "";
+        if (contentType.includes("application/json")) {
+          const payload = await response.clone().json();
+          if (typeof payload === "string") {
+            details = payload;
+          } else if (payload && typeof payload.error === "string") {
+            details = payload.error;
+          } else if (payload && typeof payload.message === "string") {
+            details = payload.message;
+          }
+        } else {
+          const text = (await response.clone().text()).trim();
+          if (text) {
+            details = text;
+          }
+        }
+      } catch {
+        // Fall back to the status-based message below.
+      }
+    }
+
+    if (details) {
+      return new Error(details);
+    }
+
+    const status = response?.status;
+    return new Error(
+      status
+        ? `Edge Function ${functionName} failed with status ${status}.`
+        : `Edge Function ${functionName} failed.`
+    );
+  }
+
+  if (error instanceof FunctionsRelayError || error instanceof FunctionsFetchError) {
+    return new Error(
+      `${error.message}. Supabase may still be waking back up, so refresh and try again.`
+    );
+  }
+
+  if (error instanceof Error) {
+    return error;
+  }
+
+  return new Error(`Unable to invoke ${functionName}.`);
 }
 
 export async function ensureAnonymousUser(): Promise<User> {
@@ -114,7 +177,7 @@ async function invokeFunction<T>(name: string, body: Record<string, unknown>) {
       continue;
     }
 
-    throw error;
+    throw await toFriendlyFunctionError(error, name);
   }
 
   throw new Error(`Unable to invoke ${name}.`);
