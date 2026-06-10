@@ -88,33 +88,55 @@ function isRecoverableAuthError(error: unknown) {
   );
 }
 
+async function readFunctionErrorDetails(error: FunctionsHttpError) {
+  const response = error.context as Response | undefined;
+  if (!response) {
+    return null;
+  }
+
+  try {
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      const payload = await response.clone().json();
+      if (typeof payload === "string") {
+        return payload;
+      }
+      if (payload && typeof payload.error === "string") {
+        return payload.error;
+      }
+      if (payload && typeof payload.message === "string") {
+        return payload.message;
+      }
+      return null;
+    }
+
+    const text = (await response.clone().text()).trim();
+    return text || null;
+  } catch {
+    return null;
+  }
+}
+
+function isRecoverableAuthDetails(details: string | null) {
+  if (!details) {
+    return false;
+  }
+
+  const message = details.toLowerCase();
+  return (
+    message.includes("unable to verify user") ||
+    message.includes("missing authorization header") ||
+    message.includes("jwt") ||
+    message.includes("authorization") ||
+    message.includes("token") ||
+    message.includes("session")
+  );
+}
+
 async function toFriendlyFunctionError(error: unknown, functionName: string) {
   if (error instanceof FunctionsHttpError) {
     const response = error.context as Response | undefined;
-    let details: string | null = null;
-
-    if (response) {
-      try {
-        const contentType = response.headers.get("content-type") ?? "";
-        if (contentType.includes("application/json")) {
-          const payload = await response.clone().json();
-          if (typeof payload === "string") {
-            details = payload;
-          } else if (payload && typeof payload.error === "string") {
-            details = payload.error;
-          } else if (payload && typeof payload.message === "string") {
-            details = payload.message;
-          }
-        } else {
-          const text = (await response.clone().text()).trim();
-          if (text) {
-            details = text;
-          }
-        }
-      } catch {
-        // Fall back to the status-based message below.
-      }
-    }
+    const details = await readFunctionErrorDetails(error);
 
     if (details) {
       return new Error(details);
@@ -172,7 +194,13 @@ async function invokeFunction<T>(name: string, body: Record<string, unknown>) {
       return data as T;
     }
 
-    if (attempt === 0 && isRecoverableAuthError(error)) {
+    const authDetails =
+      error instanceof FunctionsHttpError ? await readFunctionErrorDetails(error) : null;
+
+    if (
+      attempt === 0 &&
+      (isRecoverableAuthError(error) || isRecoverableAuthDetails(authDetails))
+    ) {
       await clearPersistedSession();
       continue;
     }
